@@ -1,4 +1,4 @@
-FROM apache/airflow:2.4.2
+FROM apache/airflow:2.5.1
 COPY requirements.txt .
 
 # Install packages from requirements.txt file
