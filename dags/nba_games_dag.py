@@ -9,7 +9,6 @@ SOURCE_DATABASE = 'RAW'
 SOURCE_SCHEMA   = 'NBA_DUMP'
 TARGET_DATABASE = 'CLEAN'
 TARGET_SCHEMA   = 'NBA'
-ENTITIES        = ['games']
 
 default_args    = {
     'owner': 'airflow',
@@ -17,7 +16,7 @@ default_args    = {
     'retries': 1
 }
 
-def create_table(database, schema, table, columns, connection):
+def create_table(database, schema, table, columns, connection, **kwargs):
     '''
     create a new table in snowflake
     '''
@@ -31,7 +30,7 @@ def create_table(database, schema, table, columns, connection):
 
     connection.execute(query)
 
-def update_schema():
+def update_table_schema(ti):
     '''
     get columns from staging table and update prod table if exists
     '''
@@ -44,27 +43,31 @@ def update_schema():
     with snowf_engine.begin() as con:
         source_query    = f"select column_name from {SOURCE_DATABASE}.information_schema.columns where table_name = 'GAMES' and table_schema = '{SOURCE_SCHEMA}';"
         source_res      = con.execute(source_query).fetchall()
-        
+
         if not source_res:
             return
         
         source_columns  = [col[0] for col in source_res]
+        # store columns for later usage in a seprate task
+        ti.xcom_push(key = 'source_cols', value = source_columns)
         
         target_query    = f"select column_name from {TARGET_DATABASE}.information_schema.columns where table_name = 'GAMES' and table_schema = '{TARGET_SCHEMA}';"
         target_res      = con.execute(target_query).fetchall()
+
         if not target_res:
+            
             create_table(
-                database=TARGET_DATABASE
-                , schema=TARGET_SCHEMA
-                , table = 'GAMES'
-                , columns = source_columns
+                database    = TARGET_DATABASE
+                , schema    = TARGET_SCHEMA
+                , table     = 'GAMES'
+                , columns   = source_columns
                 , connection = con
             )
+
         else:
             target_columns  = [col[0] for col in target_res]
             new_cols        = [col for col in source_columns if col not in set(target_columns)]
-
-            
+  
             if not new_cols or len(new_cols) == 0:
                 return
 
@@ -78,11 +81,55 @@ def update_schema():
 
             con.execute(add_col_query)
 
+def merge_tables(ti):
+
+    # okay to use xcom to pass columns between tasks since most tables columns are small size list
+    source_cols = ti.xcom_pull(key = 'source_cols', task_ids = 'update_table_schema')
+
+    if not source_cols:
+        return
+
+    query = f"merge into {TARGET_DATABASE}.{TARGET_SCHEMA}.GAMES as target using {SOURCE_DATABASE}.{SOURCE_SCHEMA}.GAMES as source on target.id = source.id " \
+            f"\n when matched and source.sync_time >= target.sync_time then update set "
+
+    cols_len = len(source_cols) - 1
+
+    # when games id exists but record updated
+    for idx, col in enumerate(source_cols):
+        query += f"target.{col} = source.{col}"
+        if idx != cols_len:
+            query += ", "
+    
+    # insert new records if not matched
+    query += '\n when not matched then insert ('
+    for idx, col in enumerate(source_cols):
+        query += f"{col}"
+        if idx != cols_len:
+            query += ", "
+        else:
+            query += ") \n values ("
+
+    for idx, col in enumerate(source_cols):
+        query += f"source.{col}"
+        if idx != cols_len:
+            query += ", "
+        else:
+            query += ")"
+
+    # merge tables
+    snowf_engine = SnowflakeHook(
+        'snowflake_conn'
+        , database = SOURCE_DATABASE
+        , schema = SOURCE_SCHEMA
+    ).get_sqlalchemy_engine()
+
+    with snowf_engine.begin() as con:
+        con.execute(query)
+
 with DAG(dag_id='nba_games', default_args=default_args, schedule_interval=None) as dag:
 
     # Extract and Load to staging area
     # extract_load = BashOperator(
-
     #     task_id         = 'extract_load'
     #     , bash_command  = f'docker exec nba-sport-extractor-app-1 python main.py '\
     #                         f' --entity games'\
@@ -90,15 +137,19 @@ with DAG(dag_id='nba_games', default_args=default_args, schedule_interval=None) 
     #                         f' --schema {SOURCE_SCHEMA}'
     # )
 
-    # Update table schema
-    update_schema = PythonOperator(
-        task_id = 'update_schema'
-        , python_callable = update_schema
+    # Update prod table schema if needed
+    update_table_schema = PythonOperator(
+        task_id = 'update_table_schema'
+        , python_callable = update_table_schema
     )
 
-    # Merge into prod table
+    # Merge update and new data into prod table
+    merge_tables = PythonOperator(
+        task_id = 'merge_tables'
+        , python_callable = merge_tables
+    )
 
     # Clean up 
     
-    # extract_load >> update_schema
-    update_schema
+    # extract_load >> update_table_schema
+    update_table_schema >> merge_tables
