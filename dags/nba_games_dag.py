@@ -16,7 +16,7 @@ default_args    = {
     'retries': 1
 }
 
-def create_table(database, schema, table, columns, connection, **kwargs):
+def _create_table(database, schema, table, columns, connection, **kwargs):
     '''
     create a new table in snowflake
     '''
@@ -48,6 +48,7 @@ def update_table_schema(ti):
             return
         
         source_columns  = [col[0] for col in source_res]
+
         # store columns for later usage in a seprate task
         ti.xcom_push(key = 'source_cols', value = source_columns)
         
@@ -56,7 +57,7 @@ def update_table_schema(ti):
 
         if not target_res:
             
-            create_table(
+            _create_table(
                 database    = TARGET_DATABASE
                 , schema    = TARGET_SCHEMA
                 , table     = 'GAMES'
@@ -83,7 +84,6 @@ def update_table_schema(ti):
 
 def merge_tables(ti):
 
-    # okay to use xcom to pass columns between tasks since most tables columns are small size list
     source_cols = ti.xcom_pull(key = 'source_cols', task_ids = 'update_table_schema')
 
     if not source_cols:
@@ -101,20 +101,19 @@ def merge_tables(ti):
             query += ", "
     
     # insert new records if not matched
-    query += '\n when not matched then insert ('
+    query       += "\n when not matched then insert ("
+    values_q    = ""
     for idx, col in enumerate(source_cols):
-        query += f"{col}"
+        query           += f"{col}"
+        values_q    += f"source.{col}"
         if idx != cols_len:
             query += ", "
+            values_q += ", "
         else:
             query += ") \n values ("
+            values_q += ")"
 
-    for idx, col in enumerate(source_cols):
-        query += f"source.{col}"
-        if idx != cols_len:
-            query += ", "
-        else:
-            query += ")"
+    final_query = query + values_q
 
     # merge tables
     snowf_engine = SnowflakeHook(
@@ -124,7 +123,7 @@ def merge_tables(ti):
     ).get_sqlalchemy_engine()
 
     with snowf_engine.begin() as con:
-        con.execute(query)
+        con.execute(final_query)
 
 with DAG(dag_id='nba_games', default_args=default_args, schedule_interval=None) as dag:
 
