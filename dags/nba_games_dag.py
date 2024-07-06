@@ -1,4 +1,3 @@
-from ctypes.wintypes import tagSIZE
 from airflow import DAG
 # from airflow.utils.dates import days_ago
 from airflow.operators.bash import BashOperator
