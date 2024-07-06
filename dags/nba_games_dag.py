@@ -1,3 +1,4 @@
+from ctypes.wintypes import tagSIZE
 from airflow import DAG
 # from airflow.utils.dates import days_ago
 from airflow.operators.bash import BashOperator
@@ -84,6 +85,10 @@ def func_update_table_schema(ti, table, **kwargs):
 
 def func_merge_tables(ti, entity, table, case_field, entity_id, **kwargs):
 
+    '''
+    merging updated or new records in the source into the target table
+    '''
+
     # get the list of columns from prev task
     source_cols = ti.xcom_pull(key = 'source_cols', task_ids = 'update_table_schema')
 
@@ -132,11 +137,26 @@ def func_merge_tables(ti, entity, table, case_field, entity_id, **kwargs):
     with snowf_engine.begin() as con:
         con.execute(final_query)
 
+def func_job_clean_up(table):
+    
+    '''
+    remove source table once task completed
+    '''
+
+    snowf_engine = SnowflakeHook(
+        'snowflake_conn'
+        , database  = SOURCE_DATABASE
+        , schema    = SOURCE_SCHEMA
+    ).get_sqlalchemy_engine()
+
+    query = f"drop table {table};"
+    with snowf_engine.begin() as con:
+        con.execute(query)
+
 def generate_dag(dag_id, entity, case_field, entity_id):
     dag = DAG(
         dag_id          = dag_id
         , catchup       = False
-        # , start_date    = datetime(2024,1,1)
         , start_date    = datetime(2024,1,1)
         , schedule      = '@daily'
         , default_args  = {}
@@ -173,7 +193,13 @@ def generate_dag(dag_id, entity, case_field, entity_id):
                                 }
         )
 
-        extract_load >> update_table_schema >> merge_tables
+        clean_up =  PythonOperator(
+            task_id             = 'clean_up'
+            , python_callable   = func_job_clean_up
+            , op_kwargs         = {'table' : entity.upper()}
+        )
+
+        extract_load >> update_table_schema >> merge_tables >> clean_up
 
 
 
