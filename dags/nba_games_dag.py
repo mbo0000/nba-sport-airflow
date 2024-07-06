@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.utils.dates import days_ago
+# from airflow.utils.dates import days_ago
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
@@ -194,6 +194,7 @@ ENTITIES = [
     }
 ]
 
+'TODO: make dag dependencies, i.e game stats waits for games dag to finish first then run'
 for ent in ENTITIES:
     for k,val in ent.items():
         dag_id              = f"nba_{k}"
