@@ -1,8 +1,9 @@
 from airflow import DAG
 # from airflow.utils.dates import days_ago
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime
 
 SOURCE_DATABASE = 'RAW'
@@ -15,6 +16,7 @@ TARGET_SCHEMA   = 'NBA'
 #     'start_date': days_ago(0),
 #     'retries': 1
 # }
+
 
 def _create_table(database, schema, table, columns, connection, **kwargs):
     '''
@@ -32,7 +34,7 @@ def _create_table(database, schema, table, columns, connection, **kwargs):
 
 def func_update_table_schema(ti, table, **kwargs):
     '''
-    get columns from staging table and update prod table if exists
+    get columns from source table and update target table schema if applicable
     '''
     snowf_engine = SnowflakeHook(
         'snowflake_conn'
@@ -152,12 +154,20 @@ def func_job_clean_up(table):
     with snowf_engine.begin() as con:
         con.execute(query)
 
-def generate_dag(dag_id, entity, case_field, entity_id):
+def func_check_down_stream_dag(down_stream_dag_id):
+    '''
+    check if there is downstream dag id to trigger, otherwise finish the dag
+    '''
+    if down_stream_dag_id:
+        return 'trigger_downstream_dag'
+    return 'dag_finished'
+
+def generate_dag(dag_id, entity, case_field, entity_id, trigger_dag_id, schedule):
     dag = DAG(
         dag_id          = dag_id
         , catchup       = False
         , start_date    = datetime(2024,1,1)
-        , schedule      = '@daily'
+        , schedule      = schedule
         , default_args  = {}
         , description   = ''
     )
@@ -192,14 +202,35 @@ def generate_dag(dag_id, entity, case_field, entity_id):
                                 }
         )
 
+        # drop source table
         clean_up =  PythonOperator(
             task_id             = 'clean_up'
             , python_callable   = func_job_clean_up
             , op_kwargs         = {'table' : entity.upper()}
         )
 
-        extract_load >> update_table_schema >> merge_tables >> clean_up
+        # check for down stream dag
+        check_dag_downstream = BranchPythonOperator(
+            task_id = 'check_dag_downstream'
+            , python_callable = func_check_down_stream_dag
+            , op_kwargs = {'down_stream_dag_id' : trigger_dag_id}
+        )
 
+        # trigger downstream/ext dag
+        trigger_downstream_dag = TriggerDagRunOperator(
+            task_id = 'trigger_downstream_dag'
+            , trigger_dag_id = f"nba_{trigger_dag_id}"
+            # val passing to downstream dag if needed
+            , conf = {'message':''}
+        )
+
+        # finishing task
+        dag_finished = BashOperator(
+            task_id = 'dag_finished'
+            , bash_command = f'echo "dag {dag_id} is finished"'
+        )
+
+        extract_load >> update_table_schema >> merge_tables >> clean_up >> check_dag_downstream >> [trigger_downstream_dag, dag_finished]
 
 
 
@@ -207,14 +238,18 @@ def generate_dag(dag_id, entity, case_field, entity_id):
 ENTITIES = [
     {
         'games': {
-            'id' : 'id'
-            , 'case_field': 'status_long'
+            'id'                : 'id'
+            , 'case_field'      : 'status_long'
+            , 'trigger_dag_id'  : 'games_statistics'
+            , 'schedule'        : '@daily'
         }
     }
     , {
         'games_statistics': {
-            'id' : 'game_id'
-            , 'case_field': ''
+            'id'                : 'game_id'
+            , 'case_field'      : ''
+            , 'trigger_dag_id'  : None
+            , 'schedule'        : None
         }
     }
 ]
@@ -228,5 +263,7 @@ for ent in ENTITIES:
             , k
             , val['case_field']
             , val['id']
+            , val['trigger_dag_id']
+            , val['schedule']
         )
         
