@@ -1,4 +1,4 @@
-# WIP nba-sport-airflow
+# nba-sport-airflow
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
 ![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-2.x-green)
 ![Snowflake](https://img.shields.io/badge/Snowflake-%23f3f1ff)
