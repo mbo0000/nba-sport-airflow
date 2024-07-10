@@ -54,7 +54,7 @@ Below are the steps to locally setup the project:
     docker build -t airflow-nba-image:latest . && docker compose up -d
 6. Once Airflow web UI is up and running, go to [http:localhost:8080](http:localhost:8080) to see the Airflow UI. The username and password are both `airflow`.
 7. Create a Snowflake connection and provide your Snowflake credentials
-    ![Diagram]()
+    ![Diagram](https://github.com/mbo0000/nba-sport-airflow/blob/main/img/snowf_conn.png)
 
 
 ## Code Walkthrough
@@ -166,7 +166,8 @@ Generated DAG will have the following template:
         ...
     ```
 
-![Diagram]()
+Complete DAG tasks graph:
+![Diagram](https://github.com/mbo0000/nba-sport-airflow/blob/main/img/dag_tasks_flow.png)
 
 ## Future Work and Improvement
 - Add other endpoints
