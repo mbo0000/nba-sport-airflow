@@ -39,6 +39,15 @@ In this project, we will be working with multiple endpoints that need to be extr
 - **Trigger Downstream DAGs**: Optionally triggers additional DAG that has cross DAG dependency.
 
 ## Installation and Setup
+
+### Prerequisites
+
+- Python 3.9+
+- Snowflake Account
+- Apache Airflow (2.x recommended)
+- Docker
+- [API Sport Account](https://api-sports.io)
+
 Below are the steps to locally setup the project:
 1. Create a main project folder >> navigate to the project folder.
 2. Clone the API extractor repository and follow [installation](https://github.com/mbo0000/nba-sport-extractor) instruction:
