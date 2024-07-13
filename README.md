@@ -157,7 +157,7 @@ Generated DAG will have the following template:
     def func_job_clean_up(table):
         ...
     ```
-5. DAGs, such as games_statistics, should only run after another DAG has completed. Therefore, upstream DAGs, like games, should trigger their downstream DAGs at the end of the workflow. Each upstream DAG must first check if a downstream DAG exists, then trigger the downstream DAG based on its ID.
+5. Each DAG will trigger its downstream DAG, if applicable. The upstream DAG (games entity) is configured to trigger a downstream DAG as the last step. This is specified in the trigger_dag_id parameter of the entity.
     ```
     check_dag_downstream = BranchPythonOperator(
         task_id = 'check_dag_downstream'
