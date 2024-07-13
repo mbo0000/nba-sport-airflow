@@ -37,6 +37,8 @@ In this project, we will be working with multiple endpoints that need to be extr
 - **Data Merge**: Merges new and updated records from the source to the target tables in Snowflake.
 - **Cleanup**: Drops the source table after processing is completed.
 - **Trigger Downstream DAGs**: Optionally triggers additional DAG that has cross DAG dependency.
+  
+![Diagram](https://github.com/mbo0000/nba-sport-airflow/blob/main/img/dag_tasks_flow.png)
 
 ## Installation and Setup
 
@@ -174,9 +176,6 @@ Generated DAG will have the following template:
     def func_check_down_stream_dag(down_stream_dag_id):
         ...
     ```
-
-Complete DAG tasks graph:
-![Diagram](https://github.com/mbo0000/nba-sport-airflow/blob/main/img/dag_tasks_flow.png)
 
 ## Future Work and Improvement
 - Add other endpoints
