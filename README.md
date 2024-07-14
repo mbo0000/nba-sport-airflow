@@ -26,7 +26,7 @@ The primary objective of this project is to automate the data pipeline with scal
 - **Airflow**: schedule and orchestrate workflow and tasks
 - **Docker** : project container. For ease of setup, Snowflake connection and Airflow are installed and run in container.
 
-![Diagram]()
+![Diagram](https://github.com/mbo0000/nba-sport-airflow/blob/main/img/arch_diag.png)
 
 
 ## Workflow
