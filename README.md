@@ -177,10 +177,13 @@ Generated DAG will have the following template:
         ...
     ```
 
+## Design Consideration:
+- Idempotent data pipeline: for the purpose of this pipeline, all tasks are impodent. If a DAG is rerun or partially run, output will be the same as if the ask had run successfully.
+
 ## Future Work and Improvement
 - Add other endpoints
 - Add data transform, validation and processing to the target tables. Ensuring data is ready for consumption.
-- Add logs for ease of debugging for future works.
+- Setup Monitoring/alert
 - Add tests to data pipeline.
 - Integrate BI solution and create reports.
 
