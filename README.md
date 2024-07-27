@@ -130,7 +130,7 @@ Generated DAG will have the following template:
     def func_update_table_schema(ti, table, **kwargs):
         ...
     ```
-3. Load source data into target table when there are new records and update to existing records if their values changed since the last run:
+3. Incrementally load source data into target table when there are new records and update to existing records if their values changed since the last run:
     ```
     merge_tables = PythonOperator(
         task_id             = 'merge_tables'
@@ -159,7 +159,7 @@ Generated DAG will have the following template:
     def func_job_clean_up(table):
         ...
     ```
-5. Each DAG will trigger another entity's DAG, if applicable. The upstream DAG (games entity) is configured to trigger games_statistics DAG as the last step. This is specified in the trigger_dag_id parameter of the entity. That said, games_statistics DAG does not have a schedule run and only can be trigger manually or by games DAG. 
+5. Each DAG will trigger another entity's DAG, if applicable. The upstream DAG, games entity, is configured to trigger games_statistics DAG as the last step. This is specified in the trigger_dag_id parameter of the entity. That said, games_statistics DAG does not have a schedule run and only can be trigger manually or by games DAG. 
     ```
     check_dag_downstream = BranchPythonOperator(
         task_id = 'check_dag_downstream'
