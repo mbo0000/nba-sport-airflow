@@ -178,7 +178,7 @@ Generated DAG will have the following template:
     ```
 
 ## Design Consideration:
-- Idempotent data pipeline: for the purpose of this pipeline, all tasks are impodent. If a DAG is rerun or partially run, output will be the same as if the ask had run successfully.
+- Idempotent data pipeline: for the purpose of this pipeline, all tasks are idempotent. If a DAG is rerun or partially run, output will be the same as if the ask had run successfully.
 
 ## Future Work and Improvement
 - Add other endpoints
