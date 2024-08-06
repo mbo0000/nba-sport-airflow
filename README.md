@@ -57,14 +57,22 @@ Below are the steps to locally setup the project:
     ```sh
     git clone https://github.com/mbo0000/nba-sport-airflow.git
     cd nba-sport-airflow
-4. To enable both containers communicate locally, edit Airflow repo Docker compose file: x-airflow-common >> under volume, paste:
+4. In terminal, create a default network using the command below.
+    ```sh
+    docker network create airflow_default
+5. Config default networks, edit Airflow repo and [NBA extractor repo](https://github.com/mbo0000/nba-sport-extractor) Docker compose files:
     ```
-    - /var/run/docker.sock:/var/run/docker.sock
-5. Run container and install dependencies:
+    networks:
+      default:
+        external: true
+        name: airflow_default
+    ```
+    This will ensure the containers are using the same network. Airflow DAG will need to be able communicate with the NBA extractor. 
+6. Run container and install dependencies:
     ```sh
     docker build -t airflow-nba-image:latest . && docker compose up -d
-6. Once Airflow web UI is up and running, go to [http:localhost:8080](http:localhost:8080) to see the Airflow UI. The username and password are both `airflow`.
-7. Create a Snowflake connection and provide your Snowflake credentials
+7. Once Airflow web UI is up and running, go to [http:localhost:8080](http:localhost:8080) to see the Airflow UI. The username and password are both `airflow`.
+8. Create a Snowflake connection and provide your Snowflake credentials
     ![Diagram](https://github.com/mbo0000/nba-sport-airflow/blob/main/img/snowf_conn.png)
 
 
