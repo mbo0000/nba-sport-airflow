@@ -47,7 +47,7 @@ def func_update_table_schema(ti, table, **kwargs):
         source_res      = con.execute(source_query).fetchall()
 
         if not source_res:
-            return
+            return None
         
         source_columns  = [col[0] for col in source_res]
 
@@ -72,7 +72,7 @@ def func_update_table_schema(ti, table, **kwargs):
             new_cols        = [col for col in source_columns if col not in set(target_columns)]
   
             if not new_cols or len(new_cols) == 0:
-                return
+                return None
 
             add_col_query   = f"alter table {TARGET_DATABASE}.{TARGET_SCHEMA}.{table} add column "   
             new_cols_num    = len(new_cols)-1
@@ -94,7 +94,7 @@ def func_merge_tables(ti, entity, table, case_field, entity_id, **kwargs):
     source_cols = ti.xcom_pull(key = 'source_cols', task_ids = 'update_table_schema')
 
     if not source_cols:
-        return
+        return None
 
     # construct merge tables query
     query = f"merge into {TARGET_DATABASE}.{TARGET_SCHEMA}.{table} as target using {SOURCE_DATABASE}.{SOURCE_SCHEMA}.{table} as source on target.{entity_id} = source.{entity_id} "\
@@ -150,7 +150,7 @@ def func_job_clean_up(table):
         , schema    = SOURCE_SCHEMA
     ).get_sqlalchemy_engine()
 
-    query = f"drop table {table};"
+    query = f"drop table if exists {table};"
     with snowf_engine.begin() as con:
         con.execute(query)
 
