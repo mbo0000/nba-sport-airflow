@@ -6,9 +6,9 @@ from airflow.providers.snowflake.hooks.snowflake import SnowflakeHook
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime
 
-SOURCE_DATABASE = 'RAW'
+SOURCE_DATABASE = 'STAGING'
 SOURCE_SCHEMA   = 'NBA_DUMP'
-TARGET_DATABASE = 'CLEAN'
+TARGET_DATABASE = 'RAW'
 TARGET_SCHEMA   = 'NBA'
 
 # default_args    = {
